@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tools Kirim Pesan WhatsApp</title>
+  <style>
+    body{
+      font-family:system-ui,Arial;
+      min-height:100vh;
+      margin:0;
+      display:flex;
+      align-items:center;      /* tengah vertikal */
+      justify-content:center;  /* tengah horizontal */
+      background:#fafafa;
+      padding:16px;
+      box-sizing:border-box;
+    }
+    .wrapper{
+      width:100%;
+      max-width:900px;
+      text-align:center;
+    }
+    h2{margin:0 0 10px}
+    #clock{margin:0 0 18px;color:#444;font-size:14px}
+    .card{
+      border:1px solid #ddd;
+      border-radius:14px;
+      padding:18px;
+      background:#fff;
+    }
+    .btns{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      justify-content:center; /* tombol rata tengah */
+    }
+    a.btn{
+      display:inline-block;
+      padding:12px 14px;
+      border:1px solid #000;
+      border-radius:12px;
+      text-decoration:none;
+      color:#000;
+      font-weight:700;
+      min-width:260px;
+      text-align:center;
+    }
+    a.btn:hover{background:#f3f3f3}
+    small{color:#555;display:block;margin-top:12px;line-height:1.4}
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <h2>Tools Kirim Pesan WhatsApp</h2>
+    <div id="clock"></div>
+
+    <div class="card">
+      <div class="btns">
+        <a class="btn" href="index.html">Kirim banyak nomor (isi pesan sama)</a>
+        <a class="btn" href="excel.html">Kirim banyak nomor (isi pesan berbeda)</a>
+      </div>
+      <small>Opsi isi pesan berbeda menggunakan file excel yang berisi Kolom A = nomor hp, Kolom B = pesan yg ingin dikirim (lihat contoh).</small>
+    </div>
+  </div>
+
+  <script>
+    const clockEl = document.getElementById("clock");
+    const fmt = new Intl.DateTimeFormat("id-ID", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false
+    });
+
+    function tick(){ clockEl.textContent = fmt.format(new Date()); }
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>

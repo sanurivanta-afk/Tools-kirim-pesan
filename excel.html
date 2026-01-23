@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tools Kirim Pesan WhatsApp dengan Excel</title>
+  <style>
+    body{font-family:system-ui,Arial;max-width:800px;margin:24px auto;padding:0 12px}
+    h2{margin:0 0 16px}
+    .card{border:1px solid #ddd;border-radius:12px;padding:14px}
+    input,button{width:100%;box-sizing:border-box;padding:10px;font-size:14px}
+    button{cursor:pointer;font-weight:700;margin-top:10px}
+    small{color:#555;display:block;margin-top:10px;line-height:1.4}
+    .preview-img{
+      display:block;
+      max-width:100%;
+      height:auto;
+      margin:12px auto 18px; /* bawah judul, rapi tengah */
+      border:1px solid #ddd;
+      border-radius:12px;
+    }
+    .back-btn{
+      position:fixed;
+      top:16px;      /* jarak dari atas */
+      left:16px;     /* jarak dari kiri */
+      padding:8px 12px;
+      border:1px solid #000;
+      border-radius:10px;
+      text-decoration:none;
+      color:#000;
+      font-weight:600;
+      background:#fff;
+    }
+    .back-btn:hover{
+      background:#f3f3f3;
+    }
+
+  </style>
+</head>
+<body>
+  <a href="home.html" class="back-btn">← Back</a>
+  <h2>Tools Kirim Pesan WhatsApp dengan Excel</h2>
+  <div class="card">
+    <input id="file" type="file" accept=".xlsx,.xls" />
+    <button id="proses" type="button">Proses</button>
+
+    <small>
+      <b>Catatan:</b> harap masukan file excel berisi:
+      <br>- Kolom 1 (A): nomer hp
+      <br>- Kolom 2 (B): detail pesan yang akan dikirim
+    </small>
+  </div>
+  <img src="Capture.JPG" alt="Contoh Excel" class="preview-img">
+
+  <!-- SheetJS (XLSX reader) -->
+  <script src="xlsx.full.min.js"></script>
+
+  <script>
+    function normalizeNumber(raw){
+      let n = String(raw ?? "").replace(/\D/g, "");
+      if (!n) return "";
+      if (n.startsWith("0")) n = "62" + n.slice(1);
+      if (!n.startsWith("62")) return "";
+      return n;
+    }
+
+    function toText(v){
+      if (v === null || v === undefined) return "";
+      return String(v);
+    }
+
+    document.getElementById("proses").addEventListener("click", async () => {
+      const f = document.getElementById("file").files[0];
+      if (!f) return alert("Pilih file Excel dulu.");
+
+      const buf = await f.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+
+      // ambil sheet pertama
+      const sheetName = wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+
+      // array of arrays: [ [A1,B1,...], [A2,B2,...] ... ]
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
+
+      // parsing: kolom A = nomor, kolom B = pesan
+      const items = [];
+      for (let i = 0; i < rows.length; i++) {
+        const a = rows[i]?.[0];
+        const b = rows[i]?.[1];
+
+        const num = normalizeNumber(a);
+        const msg = toText(b).trim();
+
+        // skip baris kosong
+        if (!num && !msg) continue;
+
+        if (!num) continue;         // nomor wajib
+        if (!msg) continue;         // pesan wajib
+
+        items.push({ num, msg });
+      }
+
+      if (items.length === 0) {
+        return alert("Tidak ada data valid. Pastikan kolom A nomor (mulai 62/0) dan kolom B pesan terisi.");
+      }
+
+      // simpan untuk halaman list
+      localStorage.setItem("wa_excel_items", JSON.stringify({ items, createdAt: Date.now() }));
+      localStorage.removeItem("wa_excel_sent_map");
+
+      window.location.href = "excel_list.html";
+    });
+  </script>
+</body>
+</html>

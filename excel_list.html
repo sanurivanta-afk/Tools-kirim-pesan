@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WA Excel - List</title>
+  <style>
+    body{font-family:system-ui,Arial;max-width:1000px;margin:24px auto;padding:0 12px}
+    .top{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    button{cursor:pointer;font-weight:700;padding:10px 12px}
+    input[type="search"]{padding:10px 12px;min-width:260px}
+    table{width:100%;border-collapse:collapse;margin-top:14px}
+    th,td{border-bottom:1px solid #ddd;padding:10px;text-align:left;vertical-align:top}
+    .sent{opacity:.6}
+    .badge{padding:3px 8px;border:1px solid #aaa;border-radius:999px;font-size:12px}
+    .kirim{display:inline-block;padding:8px 10px;border:1px solid #000;border-radius:8px;text-decoration:none;color:#000}
+    .kirim:hover{background:#f3f3f3}
+    .msg{white-space:pre-wrap}
+    .msg{white-space:pre-wrap}
+    .msgbox summary{cursor:pointer;font-weight:600}
+    .msgbox[open] summary{margin-bottom:6px}
+    .msgbox summary{cursor:pointer;font-weight:600}
+    .msgbox summary::-webkit-details-marker{cursor:pointer}
+    .msgfull{white-space:pre-wrap;margin-top:6px}
+    .back-btn{
+      position:fixed;
+      top:16px;      /* jarak dari atas */
+      left:16px;     /* jarak dari kiri */
+      padding:8px 12px;
+      border:1px solid #000;
+      border-radius:10px;
+      text-decoration:none;
+      color:#000;
+      font-weight:600;
+      background:#fff;
+    }
+    .back-btn:hover{
+      background:#f3f3f3;
+    }
+
+  </style>
+</head>
+<body>
+  <a href="home.html" class="back-btn">← Back</a>
+  <div class="top">
+    <h2 style="margin:0;flex:1">Daftar Kirim (Excel)</h2>
+    <span id="count" class="badge">0/0</span>
+    <input id="q" type="search" placeholder="Cari nomor / kata di pesan..." />
+    <button id="back" type="button">Kembali</button>
+    <button id="clear" type="button">Hapus Checklist</button>
+  </div>
+
+  <div id="warn" style="margin-top:10px;color:#b00"></div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:44px">✔</th>
+        <th style="width:160px">Nomor</th>
+        <th>Pesan</th>
+        <th style="width:140px">Aksi</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <script>
+    function getData(){
+      try { return JSON.parse(localStorage.getItem("wa_excel_items") || "null"); }
+      catch { return null; }
+    }
+    function getSentMap(){
+      try { return JSON.parse(localStorage.getItem("wa_excel_sent_map") || "{}"); }
+      catch { return {}; }
+    }
+    function setSentMap(map){
+      localStorage.setItem("wa_excel_sent_map", JSON.stringify(map));
+    }
+    function buildLink(num, msg){
+      return "https://wa.me/" + num + "?text=" + encodeURIComponent(msg);
+    }
+    function keyOf(item, idx){
+      // unik per baris: nomor + pesan + index
+      return idx + "|" + item.num + "|" + item.msg;
+    }
+
+    const data = getData();
+    if (!data?.items?.length) {
+      document.getElementById("warn").textContent = "Data tidak ditemukan. Balik ke halaman upload.";
+    }
+
+    const items = data?.items || [];
+    const sentMap = getSentMap();
+
+    const rowsEl = document.getElementById("rows");
+    const qEl = document.getElementById("q");
+    const countEl = document.getElementById("count");
+
+    function preview30(msg){
+      const s = (msg || "").replace(/\s+/g, " ").trim();
+      return s.length > 30 ? (s.slice(0, 30) + "…") : s;
+    }
+
+    function render(){
+      rowsEl.innerHTML = "";
+      const q = (qEl.value || "").trim().toLowerCase();
+
+      let sentCount = 0;
+      for (let i = 0; i < items.length; i++){
+        const k = keyOf(items[i], i);
+        if (sentMap[k]) sentCount++;
+      }
+      countEl.textContent = sentCount + "/" + items.length;
+
+      items.forEach((item, idx) => {
+        const k = keyOf(item, idx);
+
+        const hay = (item.num + " " + item.msg).toLowerCase();
+        if (q && !hay.includes(q)) return;
+
+        const tr = document.createElement("tr");
+        const isSent = !!sentMap[k];
+        if (isSent) tr.classList.add("sent");
+
+        const tdCheck = document.createElement("td");
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = isSent;
+        cb.addEventListener("change", () => {
+          sentMap[k] = cb.checked;
+          setSentMap(sentMap);
+          render();
+        });
+        tdCheck.appendChild(cb);
+
+        const tdNum = document.createElement("td");
+        tdNum.textContent = item.num;
+
+        const tdMsg = document.createElement("td");
+
+        const details = document.createElement("details");
+        details.className = "msgbox";
+
+        const summary = document.createElement("summary");
+        summary.textContent = preview30(item.msg);
+
+        const full = document.createElement("div");
+        full.className = "msgfull";
+        full.textContent = item.msg;
+
+        details.appendChild(summary);
+        details.appendChild(full);
+        tdMsg.appendChild(details);
+
+        const tdAct = document.createElement("td");
+        const a = document.createElement("a");
+        a.className = "kirim";
+        a.href = buildLink(item.num, item.msg);
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.textContent = "Kirim";
+        a.addEventListener("click", () => {
+          sentMap[k] = true;
+          setSentMap(sentMap);
+          setTimeout(render, 0);
+        });
+        tdAct.appendChild(a);
+
+        tr.appendChild(tdCheck);
+        tr.appendChild(tdNum);
+        tr.appendChild(tdMsg);
+        tr.appendChild(tdAct);
+        rowsEl.appendChild(tr);
+      });
+    }
+
+    qEl.addEventListener("input", render);
+
+    document.getElementById("back").addEventListener("click", () => {
+      window.location.href = "excel.html";
+    });
+
+    document.getElementById("clear").addEventListener("click", () => {
+      localStorage.removeItem("wa_excel_sent_map");
+      window.location.reload();
+    });
+
+    render();
+  </script>
+</body>
+</html>

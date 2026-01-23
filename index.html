@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WA Builder - Input</title>
+  <style>
+    body{font-family:system-ui,Arial;max-width:800px;margin:24px auto;padding:0 12px}
+    textarea,input,button{width:100%;box-sizing:border-box;padding:10px;font-size:14px}
+    textarea{min-height:180px}
+    label{display:block;margin:14px 0 6px;font-weight:600}
+    .row{display:flex;gap:10px}
+    .row > *{flex:1}
+    button{cursor:pointer;font-weight:700}
+    small{color:#555}
+    .back-btn{
+      position:fixed;
+      top:16px;      /* jarak dari atas */
+      left:16px;     /* jarak dari kiri */
+      padding:8px 12px;
+      border:1px solid #000;
+      border-radius:10px;
+      text-decoration:none;
+      color:#000;
+      font-weight:600;
+      background:#fff;
+    }
+    .back-btn:hover{
+      background:#f3f3f3;
+    }
+
+  </style>
+</head>
+<a href="home.html" class="back-btn">← Back</a>
+<body>
+  <h2>Input Nomor & Pesan</h2>
+
+  <label>Daftar nomor (1 nomor per baris, mulai 62)</label>
+  <textarea id="numbers" placeholder="62812xxxxxxx&#10;62813xxxxxxx"></textarea>
+  <small>Note: kalau bisa jng lebih dari 50 nomer perhari dan Jeda dikit agar tidak dianggap spam :*.</small>
+
+  <label>Pesan yang akan dikirim</label>
+  <textarea id="message" placeholder="Halo, tulis pesanny disinii..."></textarea>
+
+  <div class="row">
+    <button id="proses">Proses</button>
+    <button id="reset" type="button">Reset</button>
+  </div>
+
+  <script>
+    function normalizeNumber(raw){
+      // ambil angka saja
+      let n = (raw || "").replace(/\D/g, "");
+      if (!n) return "";
+      // jika user nulis diawali 0, ubah ke 62
+      if (n.startsWith("0")) n = "62" + n.slice(1);
+      // pastikan mulai 62
+      if (!n.startsWith("62")) return ""; 
+      return n;
+    }
+
+    function unique(arr){
+      return [...new Set(arr)];
+    }
+
+    document.getElementById("proses").addEventListener("click", () => {
+      const rawNums = document.getElementById("numbers").value.split(/\r?\n/);
+      const nums = unique(
+        rawNums
+          .map(s => normalizeNumber(s))
+          .filter(Boolean)
+      );
+
+      const msg = document.getElementById("message").value || "";
+
+      if (nums.length === 0) return alert("Nomor valid belum ada (harus mulai 62).");
+      if (!msg.trim()) return alert("Pesan masih kosong.");
+
+      const payload = { nums, msg, createdAt: Date.now() };
+      // simpan untuk halaman 2
+      localStorage.setItem("wa_payload", JSON.stringify(payload));
+      // reset status checklist lama
+      localStorage.removeItem("wa_sent_map");
+
+      window.location.href = "list.html";
+    });
+
+    document.getElementById("reset").addEventListener("click", () => {
+      document.getElementById("numbers").value = "";
+      document.getElementById("message").value = "";
+      localStorage.removeItem("wa_payload");
+      localStorage.removeItem("wa_sent_map");
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WA Builder - List</title>
+  <style>
+    body{font-family:system-ui,Arial;max-width:900px;margin:24px auto;padding:0 12px}
+    .top{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    button{cursor:pointer;font-weight:700}
+    .btn{padding:10px 12px}
+    input[type="search"]{padding:10px 12px;min-width:240px}
+    table{width:100%;border-collapse:collapse;margin-top:14px}
+    th,td{border-bottom:1px solid #ddd;padding:10px;text-align:left;vertical-align:middle}
+    .sent{opacity:.6}
+    .badge{padding:3px 8px;border:1px solid #aaa;border-radius:999px;font-size:12px}
+    .kirim{display:inline-block;padding:8px 10px;border:1px solid #000;border-radius:8px;text-decoration:none;color:#000}
+    .kirim:hover{background:#f3f3f3}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <h2 style="margin:0;flex:1">Daftar Kirim WA</h2>
+    <span id="count" class="badge">0/0</span>
+    <input id="q" type="search" placeholder="Cari nomor..." />
+    <button class="btn" id="back">Kembali</button>
+    <button class="btn" id="clear">Hapus Checklist</button>
+  </div>
+
+  <div id="warn" style="margin-top:10px;color:#b00"></div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:44px">✔</th>
+        <th>Nomor</th>
+        <th style="width:140px">Aksi</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <script>
+    function getPayload(){
+      try { return JSON.parse(localStorage.getItem("wa_payload") || "null"); }
+      catch { return null; }
+    }
+    function getSentMap(){
+      try { return JSON.parse(localStorage.getItem("wa_sent_map") || "{}"); }
+      catch { return {}; }
+    }
+    function setSentMap(map){
+      localStorage.setItem("wa_sent_map", JSON.stringify(map));
+    }
+    function buildLink(num, msg){
+      return "https://wa.me/" + num + "?text=" + encodeURIComponent(msg);
+    }
+
+    const payload = getPayload();
+    if (!payload || !payload.nums || !payload.msg) {
+      document.getElementById("warn").textContent = "Data tidak ditemukan. Balik ke halaman input.";
+    }
+
+    const sentMap = getSentMap();
+    const rowsEl = document.getElementById("rows");
+    const qEl = document.getElementById("q");
+    const countEl = document.getElementById("count");
+
+    function render(){
+      rowsEl.innerHTML = "";
+      const q = (qEl.value || "").trim();
+
+      const nums = (payload?.nums || []).filter(n => !q || n.includes(q));
+      let sentCount = 0;
+      const total = payload?.nums?.length || 0;
+
+      (payload?.nums || []).forEach(n => { if (sentMap[n]) sentCount++; });
+      countEl.textContent = sentCount + "/" + total;
+
+      nums.forEach(num => {
+        const tr = document.createElement("tr");
+        const isSent = !!sentMap[num];
+        if (isSent) tr.classList.add("sent");
+
+        const tdCheck = document.createElement("td");
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = isSent;
+        cb.addEventListener("change", () => {
+          sentMap[num] = cb.checked;
+          setSentMap(sentMap);
+          render();
+        });
+        tdCheck.appendChild(cb);
+
+        const tdNum = document.createElement("td");
+        tdNum.textContent = num;
+
+        const tdAct = document.createElement("td");
+        const a = document.createElement("a");
+        a.className = "kirim";
+        a.href = buildLink(num, payload.msg);
+        a.target = "_blank";
+        a.rel = "noopener";
+
+        a.textContent = "Kirim";
+        a.addEventListener("click", () => {
+          // otomatis checklist saat tombol kirim diklik
+          sentMap[num] = true;
+          setSentMap(sentMap);
+          // update tampilan (tanpa mengganggu open tab baru)
+          setTimeout(render, 0);
+        });
+
+        tdAct.appendChild(a);
+
+        tr.appendChild(tdCheck);
+        tr.appendChild(tdNum);
+        tr.appendChild(tdAct);
+        rowsEl.appendChild(tr);
+      });
+    }
+
+    qEl.addEventListener("input", render);
+
+    document.getElementById("back").addEventListener("click", () => {
+      window.location.href = "index.html";
+    });
+
+    document.getElementById("clear").addEventListener("click", () => {
+      localStorage.removeItem("wa_sent_map");
+      window.location.reload();
+    });
+
+    render();
+  </script>
+</body>
+</html>
