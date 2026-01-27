@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Tools Pesan Bea Lelang</title>
+<script src="xlsx.full.min.js"></script>
+
+<style>
+  body{font-family:Arial;background:#f5f6f8;margin:0}
+  .container{max-width:1000px;margin:40px auto;padding:0 16px}
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;box-shadow:0 4px 10px rgba(0,0,0,.05)}
+  .header-bar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .controls{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+
+  input[type=file]{padding:10px;border:1px solid #ddd;border-radius:10px;width:300px;background:#fff}
+  button{padding:8px 14px;border:none;border-radius:10px;cursor:pointer;font-weight:600}
+  .btn{background:#111827;color:#fff}
+  .btn:hover{opacity:.92}
+  .btn-ghost{background:#e5e7eb;color:#111}
+  .btn-ghost:hover{opacity:.92}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+
+  .result{margin-top:20px;display:flex;flex-direction:column;gap:12px}
+  .row{
+    background:#fff;border:1px solid #e5e7eb;border-radius:12px;
+    padding:12px 14px;display:flex;align-items:center;gap:16px;
+    box-shadow:0 3px 8px rgba(0,0,0,.04);
+  }
+  .left{min-width:160px}
+  .tag{background:#f3f4f6;padding:4px 10px;border-radius:999px;font-size:12px;display:inline-block}
+  .preview{
+    flex:1;font-size:13px;color:#111;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .right{min-width:240px;text-align:right;font-size:13px;color:#111}
+  .actions{margin-top:6px;display:flex;justify-content:flex-end;gap:8px}
+
+  /* MODAL */
+  .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);align-items:center;justify-content:center;padding:14px}
+  .modal-box{
+    background:#fff;
+    width: min(900px, calc(100vw - 32px));   /* ⬅️ ngikut layar */
+    max-height: calc(100vh - 32px);          /* ⬅️ tinggi max sesuai layar */
+    overflow: hidden;                         /* ⬅️ biar scroll ada di isi */
+    border-radius:12px;
+    padding:16px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .modal-box h4{margin:0}
+  textarea{
+    width:100%;height:320px;padding:12px;font-family:Arial;
+    font-size:13px;line-height:1.5;border:1px solid #ddd;border-radius:10px;resize:vertical;
+  }
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px}
+  .hp-list{display:flex;flex-direction:column;gap:10px}
+  .hp-item{display:flex;gap:10px;align-items:center}
+  .hp-item .name{min-width:260px;font-weight:600}
+  .hp-item input{
+    flex:1;padding:10px;border:1px solid #ddd;border-radius:10px;
+  }
+  .muted{color:#6b7280;font-size:12px}
+  .hp-list{
+    flex: 1;                  /* ⬅️ isi ambil ruang */
+    overflow: auto;           /* ⬅️ scroll di dalam */
+    padding-right: 6px;       /* biar scrollbar gak nabrak */
+  }
+</style>
+</head>
+
+<body>
+<div class="container">
+  <div class="card">
+    <div class="header-bar">
+      <div>
+        <h3 style="margin:0">Tools Pesan Pembayaran Bea Lelang</h3>
+        <div class="muted" style="margin-top:6px">Upload Excel → Proses → Kirim WA per Cab Induk</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-ghost" onclick="openHpManager()">EDIT NO HP</button>
+        <button class="btn-ghost" onclick="resetHp()">RESET NO HP</button>
+      </div>
+    </div>
+
+    <div class="controls">
+      <input type="file" id="file" />
+      <button class="btn" onclick="processExcel()">PROSES</button>
+    </div>
+
+    <div class="muted" style="margin-top:10px;text-align:center">
+      Note: Sudah di Set file excel Format sesuai download dari MIS atau header (no, tgl, flag dll) dimulai baris ke 4
+    </div>
+  </div>
+
+  <div id="hasil" class="result"></div>
+</div>
+
+<!-- MODAL EDIT PESAN -->
+<div id="modalPesan" class="modal">
+  <div class="modal-box">
+    <h4>Edit Pesan</h4>
+    <textarea id="editPesan"></textarea>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModalPesan()">BATAL</button>
+      <button class="btn" onclick="saveEditPesan()">SIMPAN</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL HP MANAGER -->
+<div id="modalHpMgr" class="modal">
+  <div class="modal-box">
+    <h4>Kelola Nomor HP Cab Induk</h4>
+    <div class="muted">Format disarankan: 62xxxxxxxxxxx (tanpa +, tanpa spasi), jng lupa klik simpan apabila sudah selesai</div>
+    <div id="hpList" class="hp-list"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeHpManager()">TUTUP</button>
+      <button class="btn" onclick="saveHpManager()">SIMPAN</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================
+   1) DATA DEFAULT (boleh kamu ganti semua)
+   ========================= */
+const CAB_HP_DEFAULT = {
+ "CP BANDARJAYA":"",
+  "CP BATURAJA":"",
+  "CP BENGKULU":"",
+  "CP CURUP":"",
+  "CP JAKABARING":"",
+  "CP JAMBI":"",
+  "CP KEDATON":"",
+  "CP KENTEN":"",
+  "CP KOTABUMI":"",
+  "CP LAHAT":"",
+  "CP LEMABANG":"",
+  "CP LUBUK LINGGAU":"",
+  "CP MAYANG MANGURAI":"",
+  "CP METRO":"",
+  "CP MUARA BUNGO":"",
+  "CP MUARAENIM":"",
+  "CP PALEMBANG":"",
+  "CP PALLIMA":"",
+  "CP PANGKAL PINANG":"",
+  "CP PRABUMULIH":"",
+  "CP SEKIP":"",
+  "CP SIMPANG PULAI":"",
+  "CP SIPIN":"",
+  "CP TANJUNG KARANG PUSAT":"",
+  "CP TANJUNG KARANG TIMUR":"",
+  "CP TANJUNG PANDAN":"",
+  "CP TELUK BETUNG":"",
+  "CPS BATURAJA":"",
+  "CPS JELUTUNG":"",
+  "CPS RADIN INTAN":"",
+  "CPS SIMPANG PATAL":"",
+  "CPS SIMPANG SEKIP":"",
+  "KANWIL":"",
+  "KONVEN-KANWIL":"",
+  "SYARIAH-KONVEN":"",
+  "CPS BENGKULU":"",
+  };
+
+/* =========================
+   2) STORAGE KEY
+   ========================= */
+const LS_KEY_HP = "bea_lelang_hp_map_v1";
+
+/* =========================
+   3) RUNTIME STATE
+   ========================= */
+let CAB_HP = {};       // gabungan default + override localStorage
+let HP_DATA = {};      // cab -> hp (editable di sesi ini)
+let PESAN_DATA = {};   // cab -> pesan (editable di sesi ini)
+let EDIT_CAB = "";
+
+/* =========================
+   4) INIT LOAD HP FROM LOCALSTORAGE
+   ========================= */
+function loadHpMap(){
+  const saved = localStorage.getItem(LS_KEY_HP);
+  let savedObj = {};
+  try { savedObj = saved ? JSON.parse(saved) : {}; } catch(e){ savedObj = {}; }
+
+  // CAB_HP = default di-override oleh savedObj
+  CAB_HP = { ...CAB_HP_DEFAULT, ...savedObj };
+
+  // HP_DATA mengikuti CAB_HP (jadi tampil konsisten)
+  HP_DATA = { ...CAB_HP };
+}
+loadHpMap();
+
+/* =========================
+   5) HELPERS
+   ========================= */
+function extract(v){
+  if(v===undefined || v===null) return "";
+  v=v.toString();
+  if(v.includes(":")) return v.split(":",2)[1].trim();
+  if(v.includes(";")) return v.split(";",2)[1].trim();
+  return v.trim();
+}
+function formatRp(v){
+  let n=parseFloat((v||"0").toString().replace(/\./g,"").replace(",","."));
+  if(isNaN(n)) n=0;
+  return "Rp " + n.toLocaleString("id-ID",{minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function escapeId(s){ return s.replace(/[^a-zA-Z0-9_-]/g,"_"); }
+function escapeAttr(s){ return s.replace(/'/g,"\\'"); }
+
+/* =========================
+   6) BUILD MESSAGE + WA URL
+   ========================= */
+function buildFullMessage(cab, detail){
+  return `Assalamuallaikum wr.wb, Selamat Pagi Bapak/Ibu
+Mohon izin Bapak/Ibu menginformasikan terkait *Pembayaran Bea Lelang* ${cab} dengan detail:
+
+${detail}
+
+Mohon segera dilakukan pembayaran hutang bea lelang nya, dikarenakan 2 hari setelah lelang dan saldo bea lelang tiap bulan harus nol (Rp 0.00).
+Terima kasih Bapak/Ibu atas perhatiannya.`;
+}
+function getWAUrl(cab){
+  const hp = (HP_DATA[cab] ?? CAB_HP[cab] ?? "");
+  const msg = PESAN_DATA[cab] || "";
+  return `https://wa.me/${hp}?text=${encodeURIComponent(msg)}`;
+}
+
+/* =========================
+   7) PROCESS EXCEL
+   ========================= */
+function processExcel(){
+  const f=document.getElementById("file").files[0];
+  if(!f) return alert("Upload file dulu");
+
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:'binary'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+
+    // HEADER di baris 4 → range: 3
+    const rows=XLSX.utils.sheet_to_json(ws,{ range: 3, defval:"" });
+
+    let group={};
+    rows.forEach(r=>{
+      const cab=extract(r["Cab Induk"]);
+      if(!cab) return;
+
+      const cpp=extract(r["CPP"]);
+      const sdo=formatRp(r["SDO Akhir"]);
+
+      if(!group[cab]) group[cab]=[];
+      group[cab].push(`${cpp} SDO AKHIR *${sdo}*`);
+    });
+
+    render(group);
+  };
+  reader.readAsBinaryString(f);
+}
+
+/* =========================
+   8) RENDER
+   ========================= */
+function render(group){
+  const div=document.getElementById("hasil");
+  div.innerHTML="";
+  PESAN_DATA={};
+
+  Object.keys(group).forEach(cab=>{
+    const detail=group[cab].join("\n");
+    const full=buildFullMessage(cab, detail);
+    PESAN_DATA[cab]=full;
+
+    // nomor hp: ambil dari HP_DATA dulu, kalau kosong ambil dari CAB_HP
+    const hp = (HP_DATA[cab] ?? CAB_HP[cab] ?? "");
+    HP_DATA[cab] = hp;
+
+    const wa=getWAUrl(cab);
+    const preview = "Assalamuallaikum wr.wb, Selamat Pagi Bapak/Ibu …";
+    const disabled = !hp;
+
+    div.innerHTML += `
+      <div class="row">
+        <div class="left">
+          <span class="tag">${cab}</span>
+        </div>
+
+        <div class="preview" title="Klik EDIT untuk lihat isi lengkap">${preview}</div>
+
+        <div class="right">
+          <div><b>No HP</b><br><span id="hp_${escapeId(cab)}">${hp}</span></div>
+          <div class="actions">
+            <button class="btn-ghost" onclick="openEditPesan('${escapeAttr(cab)}')">EDIT PESAN</button>
+            <a id="wa_${escapeId(cab)}" href="${disabled ? '#' : wa}" target="_blank">
+              <button class="btn" ${disabled ? 'disabled' : ''}>KIRIM</button>
+            </a>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+}
+
+/* =========================
+   9) MODAL EDIT PESAN
+   ========================= */
+function openEditPesan(cab){
+  EDIT_CAB = cab;
+  document.getElementById("editPesan").value = PESAN_DATA[cab] || "";
+  document.getElementById("modalPesan").style.display="flex";
+}
+function closeModalPesan(){
+  document.getElementById("modalPesan").style.display="none";
+}
+function saveEditPesan(){
+  PESAN_DATA[EDIT_CAB] = document.getElementById("editPesan").value;
+  // update link WA supaya pakai pesan terbaru
+  const a = document.getElementById("wa_" + escapeId(EDIT_CAB));
+  if(a) a.href = getWAUrl(EDIT_CAB);
+  closeModalPesan();
+  alert("Pesan diperbarui.");
+}
+
+/* =========================
+   10) MODAL HP MANAGER (LOCALSTORAGE)
+   ========================= */
+function openHpManager(){
+  // refresh dari localstorage biar selalu up-to-date
+  loadHpMap();
+
+  const modal=document.getElementById("modalHpMgr");
+  const list=document.getElementById("hpList");
+  list.innerHTML="";
+
+  const cabs = new Set([
+    ...Object.keys(CAB_HP_DEFAULT),
+    ...Object.keys(CAB_HP),
+    ...Object.keys(HP_DATA)
+  ]);
+
+  Array.from(cabs).sort().forEach(cab=>{
+    const val = (HP_DATA[cab] ?? CAB_HP[cab] ?? "");
+    list.innerHTML += `
+      <div class="hp-item">
+        <div class="name">${cab}</div>
+        <input id="hp_in_${escapeId(cab)}" value="${val}" placeholder="62xxxxxxxxxxx">
+      </div>
+    `;
+  });
+
+  modal.style.display="flex";
+}
+function closeHpManager(){
+  document.getElementById("modalHpMgr").style.display="none";
+}
+function saveHpManager(){
+  const cabs = new Set([...Object.keys(CAB_HP_DEFAULT), ...Object.keys(HP_DATA), ...Object.keys(CAB_HP)]);
+  let savedObj = {};
+
+  Array.from(cabs).forEach(cab=>{
+    const el = document.getElementById("hp_in_" + escapeId(cab));
+    if(!el) return;
+    let hp = (el.value || "").trim().replace(/[^\d]/g,""); // keep digits only
+
+    // simpan override hanya jika tidak kosong
+    if(hp) savedObj[cab] = hp;
+
+    // update runtime
+    HP_DATA[cab] = hp;
+    CAB_HP[cab] = hp;
+
+    // update tampilan row kalau ada
+    const hpEl = document.getElementById("hp_" + escapeId(cab));
+    if(hpEl) hpEl.textContent = hp;
+
+    // update link wa kalau ada
+    const a = document.getElementById("wa_" + escapeId(cab));
+    if(a){
+      const disabled = !hp;
+      a.href = disabled ? "#" : getWAUrl(cab);
+      const btn = a.querySelector("button");
+      if(btn) btn.disabled = disabled;
+    }
+  });
+
+  // simpan permanen
+  localStorage.setItem(LS_KEY_HP, JSON.stringify(savedObj));
+
+  closeHpManager();
+  alert("Nomor HP sudah tersimpan");
+}
+
+/* =========================
+   11) RESET HP (hapus localStorage)
+   ========================= */
+function resetHp(){
+  if(!confirm("Reset semua nomor HP (hapus localStorage)?")) return;
+  localStorage.removeItem(LS_KEY_HP);
+  loadHpMap();
+
+  // update tampilan row kalau sudah ada hasil
+  Object.keys(HP_DATA).forEach(cab=>{
+    const hp = HP_DATA[cab] ?? "";
+    const hpEl = document.getElementById("hp_" + escapeId(cab));
+    if(hpEl) hpEl.textContent = hp;
+
+    const a = document.getElementById("wa_" + escapeId(cab));
+    if(a){
+      const disabled = !hp;
+      a.href = disabled ? "#" : getWAUrl(cab);
+      const btn = a.querySelector("button");
+      if(btn) btn.disabled = disabled;
+    }
+  });
+
+  alert("Reset selesai.");
+}
+
+/* =========================
+   12) CLOSE MODAL ON BACKDROP CLICK
+   ========================= */
+document.getElementById("modalPesan").addEventListener("click",(e)=>{
+  if(e.target.id==="modalPesan") closeModalPesan();
+});
+document.getElementById("modalHpMgr").addEventListener("click",(e)=>{
+  if(e.target.id==="modalHpMgr") closeHpManager();
+});
+</script>
+</body>
+</html>
