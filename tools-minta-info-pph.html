@@ -195,6 +195,48 @@ function formatRp(v){
   if(isNaN(n)) n=0;
   return "Rp " + n.toLocaleString("id-ID",{minimumFractionDigits:2, maximumFractionDigits:2});
 }
+function pad2(n){ return String(n).padStart(2,"0"); }
+function formatTglExcel(v){
+  if(v===undefined || v===null || v==="") return ""; // kosong tetap kosong
+
+  // Kalau sudah string tanggal (mis "01/02/2026" atau "2026-02-01"), balikin apa adanya (rapihin sedikit)
+  if(typeof v === "string"){
+    const s = v.trim();
+    if(!s) return "";
+
+    // kalau format dd/mm/yyyy atau d/m/yyyy
+    const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+    if(m){
+      const dd = pad2(m[1]);
+      const mm = pad2(m[2]);
+      let yy = m[3];
+      if(yy.length===2) yy = "20"+yy;
+      return `${dd}/${mm}/${yy}`;
+    }
+    return s; // biarin kalau format lain
+  }
+
+  // Kalau Date object
+  if(v instanceof Date && !isNaN(v)){
+    return `${pad2(v.getDate())}/${pad2(v.getMonth()+1)}/${v.getFullYear()}`;
+  }
+
+  // Kalau angka serial Excel (46033, dll)
+  if(typeof v === "number"){
+    // 25569 = 1970-01-01 dalam serial excel (1900-date system)
+    const utc_days = Math.floor(v - 25569);
+    const utc_value = utc_days * 86400;
+    const date_info = new Date(utc_value * 1000);
+
+    // handle pecahan hari (jam) kalau ada
+    if(!isNaN(date_info)){
+      return `${pad2(date_info.getUTCDate())}/${pad2(date_info.getUTCMonth()+1)}/${date_info.getUTCFullYear()}`;
+    }
+  }
+
+  // fallback
+  return (v || "").toString().trim();
+}
 function escapeId(s){ return s.replace(/[^a-zA-Z0-9_-]/g,"_"); }
 function escapeAttr(s){ return s.replace(/'/g,"\\'"); }
 
@@ -209,14 +251,18 @@ function processExcel(){
     const ws = wb.Sheets[wb.SheetNames[0]];
 
     // header baris 1 (tidak ada judul)
-    const rows = XLSX.utils.sheet_to_json(ws, {defval:""});
+    const rows = XLSX.utils.sheet_to_json(ws, {
+      defval:"",
+      raw:true,        // biar angka tetap angka (kita format sendiri)
+      cellDates:true   // kalau bisa, tanggal jadi Date object
+    });
 
     let group = {};
     rows.forEach(r=>{
       const cab = (r["Cab Induk"] || "").toString().trim();
       const outlet = (r["Outlet"] || "").toString().trim();
       const doc = (r["Document No."] || "").toString().trim();
-      const tgl = (r["Tgl. Faktur Pajak"] || "").toString().trim();
+      const tgl = formatTglExcel(r["Tgl. Faktur Pajak"]);
       const pph = formatRp(r["Nilai PPh"]);
 
       if(!cab) return;
@@ -354,14 +400,14 @@ function saveHpManager(){
 
   localStorage.setItem(LS_KEY_HP, JSON.stringify(savedObj));
   closeHpManager();
-  alert("Nomor HP tersimpan permanen (localStorage).");
+  alert("Nomor HP berhasil di edit.");
 }
 
 function resetHp(){
   if(!confirm("Reset semua nomor HP (hapus localStorage)?")) return;
   localStorage.removeItem(LS_KEY_HP);
   loadHpMap();
-  alert("Reset selesai. (Nomor kembali ke default/yang ada di script)");
+  alert("Reset selesai. (Nomor kembali ke default (kosong))");
 }
 
 /* ========= CLOSE MODAL ON BACKDROP ========= */
@@ -375,3 +421,4 @@ document.getElementById("modalHpMgr").addEventListener("click",(e)=>{
 </body>
 
 </html>
+
