@@ -87,13 +87,12 @@
         Edit pesan, jangan ganti yang di tanda kurung kurawal ({{CAB}} dan {{DETAIL}} jng dihapus ya 
         <b>{{CAB}}</b> = Cab Induk, <b>{{DETAIL}}</b> = detail outlet per baris
       </div>
-      <textarea id="templatePesan" class="template">Assalamuallaikum wr.wb, Selamat Pagi Bapak/Ibu
-
-Mohon izin menginformasikan data {{CAB}} dengan detail:
+      <textarea id="templatePesan" class="template">Assalamuallaikum wr.wb, Selamat Pagi Bapak/Ibu {{CAB}} 
+Mohon izin mau meminta informasi terkait foto KTP, Invoice, Faktur Pajak dari outlet sebagai berikut:
 
 {{DETAIL}}
 
-Terima kasih.</textarea>
+Terima kasih bapak/ibu atas perhatiannya..</textarea>
       <div class="muted" style="margin-top:6px">
         HARAP DIPERHATIKAN FILE EXCEL HEADER NYA HARUS DIBARIS 1 jika tidak akan eror saat analisis, headernya : Cab Induk | Outlet | Document No. | Tgl. Faktur Pajak | Nilai PPh |
       </div>
@@ -269,7 +268,7 @@ function processExcel(){
       if(!group[cab]) group[cab]=[];
 
       // detail per baris (boleh kamu ubah)
-      group[cab].push(`- ${outlet} | Doc: ${doc} | Tgl: ${tgl} | Nilai PPh *${pph}*`);
+      group[cab].push(`- ${outlet} | Dokumen No: ${doc} | Tgl: ${tgl} | Nilai PPh *${pph}*`);
     });
 
     render(group);
@@ -421,4 +420,5 @@ document.getElementById("modalHpMgr").addEventListener("click",(e)=>{
 </body>
 
 </html>
+
 
