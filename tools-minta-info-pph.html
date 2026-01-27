@@ -68,7 +68,7 @@
       <div>
         <h3 style="margin:0">Tools Pesan WA per Cab Induk</h3>
         <div class="muted" style="margin-top:6px">
-          Upload Excel → Proses → Kirim WA. Nomor HP tersimpan permanen (localStorage).
+          Upload Excel → Proses → Kirim WA.
         </div>
       </div>
       <div style="display:flex;gap:8px">
@@ -84,7 +84,7 @@
 
     <div style="margin-top:14px">
       <div class="muted" style="margin-bottom:6px">
-        Template Pesan (kamu tulis sendiri). Placeholder:
+        Edit pesan, jangan ganti yang di tanda kurung kurawal ({{CAB}} dan {{DETAIL}} jng dihapus ya 
         <b>{{CAB}}</b> = Cab Induk, <b>{{DETAIL}}</b> = detail outlet per baris
       </div>
       <textarea id="templatePesan" class="template">Assalamuallaikum wr.wb, Selamat Pagi Bapak/Ibu
@@ -95,7 +95,7 @@ Mohon izin menginformasikan data {{CAB}} dengan detail:
 
 Terima kasih.</textarea>
       <div class="muted" style="margin-top:6px">
-        Untuk file PPh (header baris 1): Cab Induk, Outlet, Document No., Tgl. Faktur Pajak, Nilai PPh
+        HARAP DIPERHATIKAN FILE EXCEL HEADER NYA HARUS DIBARIS 1 jika tidak akan eror saat analisis, headernya : Cab Induk | Outlet | Document No. | Tgl. Faktur Pajak | Nilai PPh |
       </div>
     </div>
   </div>
@@ -119,7 +119,7 @@ Terima kasih.</textarea>
 <div id="modalHpMgr" class="modal">
   <div class="modal-box">
     <h4>Kelola Nomor HP Cab Induk</h4>
-    <div class="muted">Format disarankan: 62xxxxxxxxxxx (tanpa +, tanpa spasi). Tersimpan permanen (localStorage).</div>
+    <div class="muted">Format disarankan: 62xxxxxxxxxxx (tanpa +, tanpa spasi). ini cuma disimpan di localstorage tidak disebarluaskan.</div>
     <div id="hpList" class="hp-list"></div>
     <div class="modal-actions">
       <button class="btn-ghost" onclick="closeHpManager()">TUTUP</button>
@@ -373,4 +373,5 @@ document.getElementById("modalHpMgr").addEventListener("click",(e)=>{
 });
 </script>
 </body>
+
 </html>
